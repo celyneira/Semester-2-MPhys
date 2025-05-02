@@ -137,7 +137,7 @@ int main(int argc, char * argv[]) {
 
   constexpr bool includeDiffusion = true;
   constexpr bool addNoise = false;
-  constexpr bool transfer_func = false;
+  constexpr bool transfer_func = true;
   constexpr bool custom_file_name = false;
   constexpr bool voltage_signal = false;
   // Particle type
@@ -154,7 +154,7 @@ int main(int argc, char * argv[]) {
   int voxel_r_refinement = 251;
 
   // Sensor thickness [cm]
-  const double thickness = 162.77e-4;
+  const double thickness = 50e-4;
   // Sensor temperature [K]
   const double temperature{300};
   //Bias voltage [V]
@@ -163,12 +163,12 @@ int main(int argc, char * argv[]) {
   const double sigma {0};
   //extracting normalisation constants
   std::vector<double> normalisations;
-  read_txt("/Users/celyn1/Documents/Sem2MPhys/GarfieldSim_SiC/si_voxels/normalisation/normalisation_constants_0.000000e+00.txt", normalisations);
+  read_txt("/Users/celyn1/Documents/Sem2MPhys/GarfieldSim_SiC/voxels/normalisation/normalisation_constants_0.000000e+00.txt", normalisations);
 
   
   //number of voxel positions
   std::vector<double> voxel_position_values;
-  read_txt("/Users/celyn1/Documents/Sem2MPhys/GarfieldSim_SiC/si_voxels/positions/voxel_positions_0.000000e+00.txt", voxel_position_values);
+  read_txt("/Users/celyn1/Documents/Sem2MPhys/GarfieldSim_SiC/voxels/positions/voxel_positions_0.000000e+00.txt", voxel_position_values);
   std::cout << "Voxel position values:" << std::endl;
   for (const auto& value : voxel_position_values) {
     std::cout << value << std::endl;
@@ -189,7 +189,7 @@ int main(int argc, char * argv[]) {
     //getting the correct voxel mesh
     char voxel_data[50];
     std::cout<<"Opening position: "<< voxel_position_values[locs]<<std::endl;
-    sprintf(voxel_data, "/Users/celyn1/Documents/Sem2MPhys/GarfieldSim_SiC/si_voxels/charge_carrier_mesh_%e_%e.txt", voxel_position_values[locs],sigma);
+    sprintf(voxel_data, "/Users/celyn1/Documents/Sem2MPhys/GarfieldSim_SiC/voxels/charge_carrier_mesh_%e_%e.txt", voxel_position_values[locs],sigma);
 
     std::cout<<voxel_data<<std::endl;
     std::vector<std::vector<double>> data = read_table(voxel_data);
@@ -199,7 +199,7 @@ int main(int argc, char * argv[]) {
       double d = thickness;
       
         // Define the medium.
-        MediumSilicon si;
+        MediumSiC si;
         si.SetTemperature(temperature);
 
         //std::cout << "The temperature is: " << variable_temperature[temp] << " with index " << temp << "\n";
@@ -364,7 +364,7 @@ int main(int argc, char * argv[]) {
             if (writeSignal) {
             //if(!custom_file_name){
                 char filename[50];
-                sprintf(filename, "silicon_data/signal_untransferred_%04d_%.0f_%.4f_%.0fV_%.4fm.txt", i, 
+                sprintf(filename, "data/signal_SiC_%04d_%.0f_%.4f_%.0fV_%.4fm.txt", i, 
                   temperature, thickness, v_bias, voxel_locs[locs]*100);
               //  }
                 std::ofstream outfile;
@@ -391,7 +391,7 @@ int main(int argc, char * argv[]) {
 
             if (writeDeleted) {
               char s_filename[50];
-              sprintf(s_filename, "silicon_data/drifted_deleted_%02d_%.4f.txt", i, voxel_locs[locs]*100);
+              sprintf(s_filename, "data/drifted_deleted_%02d_%.4f.txt", i, voxel_locs[locs]*100);
               std::ofstream outfile_2;
               outfile_2.open(s_filename, std::ios::out);
               for (unsigned int j = 0; j < nTimeBins; ++j) {
