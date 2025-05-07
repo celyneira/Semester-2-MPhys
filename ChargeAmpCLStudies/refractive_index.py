@@ -27,6 +27,11 @@ import pickle
 
 import progressbar
 
+import mplhep
+mplhep.style.use("LHCb2")
+plt.ticklabel_format(style='sci', axis='x', scilimits=(0,0))
+
+
 rcParams['font.family'] = 'DejaVu Serif'
 
 R_LIMIT = 25*10**(-6)
@@ -43,7 +48,7 @@ H = 6.62607015*10**(-34)
 
 PULSE_ENERGY = 1.009651*10**(-9)
 
-EFFECTIVE_NUMERICAL_APERTURE = 0.5
+EFFECTIVE_NUMERICAL_APERTURE = 0.42
 
 REF_INDEX_AIR = 1.0003
 REF_INDEX_ALUMINIUM = 1.51
@@ -324,7 +329,7 @@ def comparing_experiment(charge_files, thickness = Z_LIMIT, include_errors = Tru
     plt.show()
 
 
-def curve_fitting(position, save_fig = "plots/depth_scan.png", range_pickle = "nr_range_pickle.pickle", refit = True):
+def curve_fitting(position, save_fig = "plots/depth_scan.png", range_pickle = "pickle_files/nr_range_pickle.pickle", refit = True):
     if __name__ == "__main__":
         beta_data = np.genfromtxt(
             "beta_vals.txt", 
@@ -451,15 +456,15 @@ def confidence_plot(position, max_nr, min_nr, median_nr,range_pickle = "pickle_f
 
             results_pickle = open(bound_pickle, "wb")
 
-            for i in range(len(positions)):
+            """for i in range(len(positions)):
                 lower_depth_scan_results[i] = charge_density_normalisation_with_reflection_and_smearing(positions[i], lower_popt[0], energy, median_nr)
                 upper_depth_scan_results[i] = charge_density_normalisation_with_reflection_and_smearing(positions[i], upper_popt[0], energy, median_nr)
                 median_depth_scan_results[i] = charge_density_normalisation_with_reflection_and_smearing(positions[i], median_popt[0], energy, median_nr)
 
                 abs_lower_depth_scan_results[i] = charge_density_normalisation_with_reflection_and_smearing(positions[i], min(beta_2_values), energy, median_nr)
                 abs_upper_depth_scan_results[i] = charge_density_normalisation_with_reflection_and_smearing(positions[i], max(beta_2_values), energy, median_nr)
-
-            pickle.dump([upper_beta, lower_beta, median_beta, upper_beta_err, lower_beta_err, median_beta_err, lower_depth_scan_results, upper_depth_scan_results, median_depth_scan_results, abs_lower_depth_scan_results, abs_upper_depth_scan_results], bound_pickle)
+            """
+            pickle.dump([upper_beta, lower_beta, median_beta, upper_beta_err, lower_beta_err, median_beta_err, lower_depth_scan_results, upper_depth_scan_results, median_depth_scan_results, abs_lower_depth_scan_results, abs_upper_depth_scan_results], results_pickle)
 
         else:
             results_pickle = open(bound_pickle, "rb")
@@ -485,22 +490,37 @@ def confidence_plot(position, max_nr, min_nr, median_nr,range_pickle = "pickle_f
         y_max = max(beta_2_values + beta_2_errors)
         y_range = np.linspace(y_min, y_max, 100)
         fig, ax = plt.subplots()
-        ax.errorbar(nr_array, beta_2_values, yerr=beta_2_errors, markersize=5, fmt = 'o', color = 'b')
-        ax.axhline(y=upper_beta+upper_beta_err, color = 'black', linestyle='dashdot')
-        ax.axhline(y=lower_beta-lower_beta_err, color = 'black', linestyle='dashdot')
-        ax.fill_betweenx(y_range, x1=2.615, x2=2.6266, alpha = 0.2, color = 'b')
-        ax.set_ylabel(r"Beta2")
+        
+        
+        ax.errorbar(nr_array, beta_2_values, yerr=beta_2_errors, markersize=5, fmt = 'o', color = 'b', label = 'Refractive index samples')
+        
+        ax.axhline(y=(upper_beta-upper_beta_err), color = 'r', linestyle='dashdot', alpha = 0.5)
+        ax.axhline(y=(lower_beta+lower_beta_err), color = 'r', linestyle='dashdot', alpha = 0.5)
+    
+        ax.fill_betweenx(y_range, x1=max_nr, x2=min_nr, alpha = 0.2, color = 'r')
+        
+        ax.errorbar(max_nr, upper_beta, yerr= upper_beta_err, color = 'red', fmt = 'o', markersize=5, label = 'Accepted range')
+        ax.errorbar(min_nr, lower_beta, yerr= lower_beta_err, color = 'red', fmt = 'o', markersize=5)
+
+
+        ax.set_ylabel(r"Beta")
         ax.set_xlabel(r"Refractive Index")
-        ax.legend(fontsize=20)
+
+        
+        legend=plt.legend(loc= 'upper right', fontsize = 20,frameon=True)
+        legend.get_frame().set_facecolor('white')  # Set solid white background
+        legend.get_frame().set_edgecolor('black')
         plt.savefig("plots/shaded_index.png")
         plt.clf()
+
+        print(upper_beta-upper_beta_err, lower_beta+lower_beta_err)
 
 
 
 def main():
     if __name__ == "__main__":
-        curve_fitting("x3y3")
-        confidence_plot("x3y3", 2.626586419753086, 2.61536735719053, 2.6155678343882305)
+        #curve_fitting("x3y3")
+        confidence_plot("x3y3", 2.626586419753086, 2.61536735719053, 2.6155678343882305, recalculate=False)
                         
 
 main()

@@ -16,6 +16,7 @@ import h5py
 import multiprocessing as mp
 from numba import jit
 
+
 from scipy.optimize import curve_fit
 from scipy.ndimage import gaussian_filter
 from scipy import integrate
@@ -27,6 +28,9 @@ import pickle
 
 import progressbar
 
+import mplhep
+mplhep.style.use("LHCb2")
+plt.ticklabel_format(style='sci', axis='x', scilimits=(0,0))
 rcParams['font.family'] = 'DejaVu Serif'
 
 R_LIMIT = 25*10**(-6)
@@ -173,7 +177,7 @@ def fit_function(V, beta, ep, tau):
     return np.array(result)
 
 def wrapper_function(tau_test):
-    def tempfunc(V, beta,ep, nr=tau_test):
+    def tempfunc(V, beta,ep, tau=tau_test):
         return fit_function(V, beta,ep, tau_test)
     return tempfunc
 
@@ -329,7 +333,7 @@ def comparing_experiment(charge_files, thickness = Z_LIMIT, include_errors = Tru
     plt.show()
 
 
-def curve_fitting(position, range_pickle = "tau_range_pickle.pickle", refit = True):
+def curve_fitting(position, range_pickle = "pickle_files/tau_range_pickle.pickle"):
     if __name__ == "__main__":
         beta_data = np.genfromtxt(
             "beta_vals.txt", 
@@ -364,38 +368,38 @@ def curve_fitting(position, range_pickle = "tau_range_pickle.pickle", refit = Tr
         experiment_n_carriers, experimental_positions, errors = data_file_read(Z_LIMIT, filename = charge_file_name, file = mat_file_name)
 
         tau_min = 130e-15
-        tau_max = 180e-15
+        tau_max = 190e-15
         tau_indices = 20
 
         tau_array = np.linspace(tau_min, tau_max, tau_indices)
 
+        print(tau_array)
+       
         beta_2_values = np.zeros(tau_indices)
         beta_2_errors = np.zeros(tau_indices)
 
-        if refit:
-            picklefile = open(range_pickle,"wb")
 
-            pbar = progressbar.ProgressBar(widgets=[progressbar.Percentage(), progressbar.Bar()], maxval=len(tau_array)+10)
-            pbar.start()
-            for i in range(len(tau_array)):
-                
-                popt, pcov = curve_fit(wrapper_function(tau_array[i]), experimental_positions, experiment_n_carriers, bounds = (lower_bounds, upper_bounds), sigma = errors, absolute_sigma = False)
-                pbar.update(i+10)
-                perr = np.sqrt(np.diag(pcov))
+        picklefile = open(range_pickle,"wb")
 
-                beta_2_values[i]= popt[0]
-                beta_2_errors[i] = perr[0]
-            pbar.finish()
-            pickle.dump([tau_array, beta_2_values, beta_2_errors], picklefile)
-        else:
-            picklefile = open(range_pickle,"rb")
-            tau_array, beta_2_values, beta_2_errors = pickle.load(picklefile)
+        pbar = progressbar.ProgressBar(widgets=[progressbar.Percentage(), progressbar.Bar()], maxval=len(tau_array)+10)
+        pbar.start()
+        for i in range(len(tau_array)):
+            
+            popt, pcov = curve_fit(wrapper_function(tau_array[i]), experimental_positions, experiment_n_carriers, bounds = (lower_bounds, upper_bounds), sigma = errors, absolute_sigma = False)
+            pbar.update(i+10)
+            perr = np.sqrt(np.diag(pcov))
+
+            beta_2_values[i]= popt[0]
+            beta_2_errors[i] = perr[0]
+        pbar.finish()
+        pickle.dump([tau_array, beta_2_values, beta_2_errors], picklefile)
 
         return 0
 
 
 def confidence_plot(position, tau_max, tau_min, tau_med,range_pickle = "pickle_files/tau_range_pickle.pickle", bound_pickle = "pickle_files/full_data_tau_pickle.pickle", recalculate = True):
     if __name__ == "__main__":
+
         beta_data = np.genfromtxt(
                 "beta_vals.txt", 
                 delimiter=",", 
@@ -427,12 +431,15 @@ def confidence_plot(position, tau_max, tau_min, tau_med,range_pickle = "pickle_f
 
         range_pickle_file = open(range_pickle, "rb")   
 
+
         tau_array, beta_2_values, beta_2_errors = pickle.load(range_pickle_file)
+
+        print(tau_array)
 
         charges, positions, errors = data_file_read(Z_LIMIT, filename = charge_file_name, file= mat_file_name)
 
         if recalculate:
-  
+    
             lower_depth_scan_results = np.zeros(len(positions))
             upper_depth_scan_results = np.zeros(len(positions))
             median_depth_scan_results = np.zeros(len(positions))
@@ -441,9 +448,11 @@ def confidence_plot(position, tau_max, tau_min, tau_med,range_pickle = "pickle_f
             abs_upper_depth_scan_results = np.zeros(len(positions))
 
             upper_popt, upper_pcov = curve_fit(wrapper_function(tau_max), positions, charges, bounds = (lower_bounds, upper_bounds), sigma = errors, absolute_sigma = False)
+            print("Upper fit complete, beta = ", upper_popt[0])
             lower_popt, lower_pcov = curve_fit(wrapper_function(tau_min), positions, charges, bounds = (lower_bounds, upper_bounds), sigma = errors, absolute_sigma = False)
+            print("Lower fit complete, beta = ", lower_popt[0])
             median_popt, median_pcov = curve_fit(wrapper_function(tau_med), positions, charges, bounds = (lower_bounds, upper_bounds), sigma = errors, absolute_sigma = False)
-
+            print("Middle fit complete, beta = ", median_popt[0])
             upper_beta = upper_popt[0]
             lower_beta = lower_popt[0]
             median_beta = median_popt[0]
@@ -452,22 +461,22 @@ def confidence_plot(position, tau_max, tau_min, tau_med,range_pickle = "pickle_f
             lower_beta_err = np.sqrt(np.diag(lower_pcov))[0]
             median_beta_err = np.sqrt(np.diag(median_pcov))[0]
 
-
             results_pickle = open(bound_pickle, "wb")
 
-            for i in range(len(positions)):
+            """for i in range(len(positions)):
                 lower_depth_scan_results[i] = charge_density_normalisation_with_reflection_and_smearing(positions[i], lower_popt[0], energy, tau_med)
                 upper_depth_scan_results[i] = charge_density_normalisation_with_reflection_and_smearing(positions[i], upper_popt[0], energy, tau_med)
                 median_depth_scan_results[i] = charge_density_normalisation_with_reflection_and_smearing(positions[i], median_popt[0], energy, tau_med)
 
                 abs_lower_depth_scan_results[i] = charge_density_normalisation_with_reflection_and_smearing(positions[i], min(beta_2_values), energy, tau_med)
                 abs_upper_depth_scan_results[i] = charge_density_normalisation_with_reflection_and_smearing(positions[i], max(beta_2_values), energy, tau_med)
-
+            """
             pickle.dump([upper_beta, lower_beta, median_beta, upper_beta_err, lower_beta_err, median_beta_err, lower_depth_scan_results, upper_depth_scan_results, median_depth_scan_results, abs_lower_depth_scan_results, abs_upper_depth_scan_results], results_pickle)
 
         else:
             results_pickle = open(bound_pickle, "rb")
-            upper_beta, lower_beta, median_beta, lower_depth_scan_results, upper_depth_scan_results, median_depth_scan_results, abs_lower_depth_scan_results, abs_upper_depth_scan_results = pickle.load(results_pickle)
+            upper_beta, lower_beta, median_beta, upper_beta_err, lower_beta_err, median_beta_err, lower_depth_scan_results, upper_depth_scan_results, median_depth_scan_results, abs_lower_depth_scan_results, abs_upper_depth_scan_results = pickle.load(results_pickle)
+        
         positions = positions.flatten()
         plt.clf()
         fig, ax = plt.subplots()
@@ -486,20 +495,34 @@ def confidence_plot(position, tau_max, tau_min, tau_med,range_pickle = "pickle_f
         y_max = max(beta_2_values + beta_2_errors)
         y_range = np.linspace(y_min, y_max, 100)
         fig, ax = plt.subplots()
-        ax.errorbar(tau_array, beta_2_values, yerr=beta_2_errors, markersize=5, fmt = 'o', color = 'b')
-        ax.axhline(y=upper_beta+upper_beta_err, color = 'black', linestyle='dashdot')
-        ax.axhline(y=lower_beta-lower_beta_err, color = 'black', linestyle='dashdot')
-        ax.fill_betweenx(y_range, x1=(179e-15), x2=141e-15, alpha = 0.2, color = 'b')
-        ax.set_ylabel(r"Beta2")
-        ax.set_xlabel(r"Pulse duration (s)")
-        ax.legend(fontsize=20)
+        
+        
+        ax.errorbar(tau_array*10**15, beta_2_values, yerr=beta_2_errors, markersize=5, fmt = 'o', color = 'b', label = 'Pulse duration samples')
+        
+        ax.axhline(y=(upper_beta+upper_beta_err), color = 'r', linestyle='dashdot', alpha = 0.5)
+        ax.axhline(y=(lower_beta-lower_beta_err), color = 'r', linestyle='dashdot', alpha = 0.5)
+    
+        ax.fill_betweenx(y_range, x1=tau_max*10**15, x2=tau_min*10**15, alpha = 0.2, color = 'r')
+        
+        ax.errorbar(tau_max*10**15, upper_beta, yerr= upper_beta_err, color = 'red', fmt = 'o', markersize=5, label = 'Accepted range')
+        ax.errorbar(tau_min*10**15, lower_beta, yerr= lower_beta_err, color = 'red', fmt = 'o', markersize=5)
+
+
+        ax.set_ylabel(r"Beta")
+        ax.set_xlabel(r"Pulse duration (fs)")
+        
+        legend=plt.legend(loc= 'upper left', fontsize = 20,frameon=True)
+        legend.get_frame().set_facecolor('white')  # Set solid white background
+        legend.get_frame().set_edgecolor('black')
         plt.savefig("plots/shaded_tau.png")
         plt.clf()
+        print(upper_beta+upper_beta_err, lower_beta-lower_beta_err, upper_beta_err)
         
 
 
 def main():
     if __name__ == "__main__":
-        curve_fitting("x3y3")
-        confidence_plot("x3y3", 179e-15, 141e-15, 160e-15)
+        #curve_fitting("x3y3")
+        confidence_plot("x3y3", 179e-15, 141e-15, 160e-15, recalculate=False)
+        #data_file_read(Z_LIMIT, )
 main()

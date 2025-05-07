@@ -27,6 +27,9 @@ import pickle
 
 import progressbar
 
+import mplhep
+mplhep.style.use("LHCb2")
+plt.ticklabel_format(style='sci', axis='x', scilimits=(0,0))
 rcParams['font.family'] = 'DejaVu Serif'
 
 R_LIMIT = 25*10**(-6)
@@ -142,9 +145,9 @@ def array_charge_density_normalisation_with_reflection_and_smearing(V, beta, ep,
 
     V=V*REF_INDEX_CORRECTION
 
-    direct, error = integrate.dblquad(direct_charge_density_integrand, 0, r_lim, 0, z_lim, args=(V, beta, ep, zr))
-    reflected, error = integrate.dblquad(reflected_charge_density_integrand, 0, r_lim, 0, z_lim, args=(V, beta, ep,zr))
-    interference, error = integrate.dblquad(interference_charge_density_integrand, 0, r_lim, 0, z_lim, args=(V, beta, ep, zr))
+    direct, error = integrate.dblquad(direct_charge_density_integrand, 0, r_lim, 0, z_lim, args=(V, beta, ep, NAv))
+    reflected, error = integrate.dblquad(reflected_charge_density_integrand, 0, r_lim, 0, z_lim, args=(V, beta, ep,NAv))
+    interference, error = integrate.dblquad(interference_charge_density_integrand, 0, r_lim, 0, z_lim, args=(V, beta, ep, NAv))
 
     total_normalisation = direct + reflected + interference
 
@@ -184,11 +187,11 @@ def charge_density_normalisation_with_reflection_and_smearing(V, beta, ep, NAv):
 
     V=V*REF_INDEX_CORRECTION
     
-    direct, error = integrate.dblquad(direct_charge_density_integrand, 0, r_lim, 0, z_lim, args=(V, beta, ep, zr))
+    direct, error = integrate.dblquad(direct_charge_density_integrand, 0, r_lim, 0, z_lim, args=(V, beta, ep, NAv))
 
-    reflected, error = integrate.dblquad(reflected_charge_density_integrand, 0, r_lim, 0, z_lim, args=(V, beta, ep, zr))
+    reflected, error = integrate.dblquad(reflected_charge_density_integrand, 0, r_lim, 0, z_lim, args=(V, beta, ep, NAv))
 
-    interference, error = integrate.dblquad(interference_charge_density_integrand, 0, r_lim, 0, z_lim, args=(V, beta, ep, zr))
+    interference, error = integrate.dblquad(interference_charge_density_integrand, 0, r_lim, 0, z_lim, args=(V, beta, ep, NAv))
 
     total_normalisation = direct + reflected + interference
 
@@ -327,7 +330,7 @@ def comparing_experiment(charge_files, thickness = Z_LIMIT, include_errors = Tru
     plt.show()
 
 
-def curve_fitting(position, save_fig = "plots/depth_scan.png", range_pickle = "pickle_files/zr_pickle.pickle", refit = False):
+def curve_fitting(position, save_fig = "plots/depth_scan.png", range_pickle = "pickle_files/NAv_range_pickle.pickle", refit = True):
     if __name__ == "__main__":
         beta_data = np.genfromtxt(
             "beta_vals.txt", 
@@ -393,7 +396,7 @@ def curve_fitting(position, save_fig = "plots/depth_scan.png", range_pickle = "p
         
         return 0
 
-def confidence_plot(position, max_NAv, min_NAv, range_pickle = "pickle_files/zr_range_pickle.pickle", bound_pickle = "pickle_files/full_data_NAv_pickle.pickle", recalculate = True):
+def confidence_plot(position, max_NAv, min_NAv, range_pickle = "pickle_files/NAv_range_pickle.pickle", bound_pickle = "pickle_files/full_data_NAv_pickle.pickle", recalculate = True):
     beta_data = np.genfromtxt(
             "beta_vals.txt", 
             delimiter=",", 
@@ -464,7 +467,7 @@ def confidence_plot(position, max_NAv, min_NAv, range_pickle = "pickle_files/zr_
             abs_upper_depth_scan_results[i] = charge_density_normalisation_with_reflection_and_smearing(positions[i], max(beta_2_values), energy, min_NAv)
 
         pbar.finish()
-        results_pickle = pickle.dump([upper_beta, lower_beta, upper_beta_err, lower_beta_err, upper_depth_scan, lower_depth_scan, abs_lower_depth_scan_results, abs_upper_depth_scan_results], results_pickle)
+        pickle.dump([upper_beta, lower_beta, upper_beta_err, lower_beta_err, upper_depth_scan, lower_depth_scan, abs_lower_depth_scan_results, abs_upper_depth_scan_results], results_pickle)
     else:
         results_pickle = open(bound_pickle, "rb")
         upper_beta, lower_beta, upper_beta_err, lower_beta_err, upper_depth_scan, lower_depth_scan, abs_lower_depth_scan_results, abs_upper_depth_scan_results = pickle.load(results_pickle)
@@ -492,23 +495,37 @@ def confidence_plot(position, max_NAv, min_NAv, range_pickle = "pickle_files/zr_
 
     y_min = min(beta_2_values - beta_2_errors)
     y_max = max(beta_2_values + beta_2_errors)
+    
     y_range = np.linspace(y_min, y_max, 100)
+    
     fig, ax = plt.subplots()
-    ax.errorbar(NA_array, beta_2_values, yerr=beta_2_errors, markersize=5, fmt = 'o', color = 'b')
-    ax.fill_betweenx(y_range, x1=0.42, x2=0.5, alpha = 0.2, color = 'b')
-    ax.axhline(y=(upper_beta-upper_beta_err[0]), color = 'black', linestyle='dashdot')
-    ax.axhline(y=(lower_beta+lower_beta_err[0]), color = 'black', linestyle='dashdot')
-    ax.set_ylabel(r"Beta2")
+    
+    ax.errorbar(NA_array, beta_2_values, yerr=beta_2_errors, markersize=5, fmt = '.', color = 'b', label = "Numerical Aperture samples")
+    ax.fill_betweenx(y_range, x1=0.42, x2=0.5, alpha = 0.2, color = 'r')
+    
+    ax.axhline(y=(upper_beta+upper_beta_err), color = 'r', linestyle='dashdot')
+    ax.axhline(y=(lower_beta-lower_beta_err), color = 'r', linestyle='dashdot')
+    
+    ax.errorbar(0.42, upper_beta, yerr= upper_beta_err, color = 'red', fmt = 'x', markersize=5, label = 'Accepted range')
+    ax.errorbar(0.5, lower_beta, yerr= lower_beta_err, color = 'red', fmt = 'x', markersize=5)
+
+
+    ax.set_ylabel(r"Beta")
     ax.set_xlabel(r"Numerical Aperture")
-    ax.legend(fontsize=20)
+    legend=plt.legend(loc= 'upper right', fontsize = 20,frameon=True)
+    legend.get_frame().set_facecolor('white')  # Set solid white background
+    legend.get_frame().set_edgecolor('black')
+  
     fig.savefig("plots/shaded_na.png")
     plt.clf()
+
+    print(upper_beta+upper_beta_err, lower_beta-lower_beta_err, upper_beta_err)
 
 energy = 1021.443
 error = 4.418658
 
 def main():
     if __name__ == "__main__":
-        curve_fitting("x3y3")
-        confidence_plot("x3y3", 179e-15, 141e-15, 160e-15)
+        #curve_fitting("x3y3")
+        confidence_plot("x3y3", 0.42, 0.5, recalculate=False)
 main()

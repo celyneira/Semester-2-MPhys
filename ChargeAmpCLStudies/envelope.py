@@ -27,7 +27,11 @@ import pickle
 
 import progressbar
 
-rcParams['font.family'] = 'DejaVu Serif'
+import progressbar
+import mplhep
+mplhep.style.use("LHCb2")
+plt.ticklabel_format(style='sci', axis='x', scilimits=(1000,1000))
+
 
 R_LIMIT = 25*10**(-6)
 Z_LIMIT = 50*10**(-6)
@@ -372,34 +376,32 @@ def confidence_plot(position, pickle_file = "pickle_files/envelope.pickle", reca
 
     l_max = (720+5.4432)*1E-9
     tau_max = 179e-15
-    zr_max = 2.4e-6
     l_um = l_max*10**6
-    nr_max = np.sqrt(9.90 + 0.1364/(l_um**2-0.0334)+545/(l_um**2-163.69))
-    NAv_max = np.sqrt((nr_max*l_max)/(zr_max*np.pi))
+    nr_max = np.sqrt(1+ 0.20075*l_um**2/(l_um**2+12.07224)+5.54861*l_um**2/(l_um**2-0.02641)+35.65066*l_um**2/(l_um**2-1268.24708))
+    NAv_max = 0.42
 
     l_min = (720-5.4432)*1E-9
     tau_min = 141e-15
-    zr_min = 3.4e-6
     l_mm = l_min*10**3
     A = 2.5610
     B=0.0340
     nr_min = A+(B/l_mm**2)*10**-6
-    NAv_min = np.sqrt((nr_min*l_min)/(zr_min*np.pi))
+    NAv_min = 0.5
 
     l_med = (720)*1E-9
     tau_med = 160e-15
-    zr_med = 3.4e-6
     l_um = l_med*10**6
     A = 2.5610
     B=0.0340
     nr_med = np.sqrt(9.90 + 0.1364/(l_um**2-0.0334)+545/(l_um**2-163.69))
-    NAv_med = 0.4
+    NAv_med = 0.42
 
     l = 720e-9
     tau = 160e-15
-    NAv = 0.5
-    nr = 2.6154
+    NAv = NAv_med
+    nr = nr_med
 
+ 
 
 
     energy_match = energy_data[energy_data['coordinate'] == position]
@@ -410,14 +412,7 @@ def confidence_plot(position, pickle_file = "pickle_files/envelope.pickle", reca
     upper_bounds = [1e-11, (energy+energy_error)]
     lower_bounds = [1e-14, (energy-energy_error)]
 
-    full_upper_bounds = [1e-11, (energy+energy_error), l_max, tau_max, nr_min, NAv_max]
-    full_lower_bounds = [1e-14, (energy-energy_error), l_min, tau_min, nr_max, NAv_min]
 
-    for i in range(len(full_upper_bounds)):
-        if full_upper_bounds[i] < full_lower_bounds[i]:
-            print(i)
-    print("UPPER BOUNDS: ",full_upper_bounds)
-    print("LOWER BOUNDS: ",full_lower_bounds)
     mat_file_name = "200V/Zscan_SiC_{}_-200V.mat".format(position)
     charge_file_name = "200V_Charge/{}.txt".format(position)
 
@@ -473,6 +468,7 @@ def confidence_plot(position, pickle_file = "pickle_files/envelope.pickle", reca
                      median_depth_scan_results_upperUncert, median_depth_scan_results_lowerUncert], results_pickle)
         pbar.finish()
     else:
+        uniformity_picklefile = open("pickle_files/uniformity.pickle", "rb")
         results_pickle = open(pickle_file, "rb")
 
         upper_beta, lower_beta, fit_beta, \
@@ -481,25 +477,34 @@ def confidence_plot(position, pickle_file = "pickle_files/envelope.pickle", reca
         lower_depth_scan_results, upper_depth_scan_results, median_depth_scan_results,\
         median_depth_scan_results_upperUncert, median_depth_scan_results_lowerUncert = pickle.load(results_pickle)
 
+        min_uniformity_charges, max_uniformity_charges= pickle.load(uniformity_picklefile)
+
+
     positions = positions.flatten()
     plt.clf()
     print("mean")
     print(np.sqrt(np.diag(median_pcov))[0])
     print(fit_beta)
     print("lower:")
-    print(np.sqrt(np.diag(lower_pcov))[0])
+    print(np.sqrt(np.diag(lower_pcov ))[0])
     print(lower_beta)
     print("upper")
     print(np.sqrt(np.diag(upper_pcov))[0])
     print(upper_beta)
+    print("absolute maxmimum = ", upper_beta+np.sqrt(np.diag(upper_pcov))[0])
+    print("full range: ", lower_beta-np.sqrt(np.diag(lower_pcov ))[0] ,upper_beta+np.sqrt(np.diag(upper_pcov))[0])
+    
+    print("Envelope uncertainty = ", fit_beta-lower_beta, upper_beta-fit_beta)
 
-    fig, ax = plt.subplots()
-    ax.plot(positions*10**6, median_depth_scan_results)
-    ax.fill_between(positions*10**6, lower_depth_scan_results, upper_depth_scan_results, color = 'grey', alpha = .2)
-    ax.fill_between(positions*10**6, median_depth_scan_results_lowerUncert, median_depth_scan_results_upperUncert, color = 'b', alpha = .2)
-
-    ax.set_xlabel("Position (um)")
+    fig, ax = plt.subplots(figsize=(12,10))
+    ax.errorbar(positions*10**6, charges, yerr=errors, color = 'black',fmt = '.',markersize = .2, capsize = 2, label = 'Experiment')
+    ax.plot(positions*10**6, median_depth_scan_results,label="β= {:.2e} m/W".format(fit_beta))
+    ax.fill_between(positions*10**6, lower_depth_scan_results, upper_depth_scan_results, color = 'grey', alpha = .2, label = "Parameterisation error")
+    ax.fill_between(positions*10**6, median_depth_scan_results_lowerUncert, median_depth_scan_results_upperUncert, color = 'b', alpha = .2, label = 'Curve fit error')
+    ax.fill_between(positions*10**6, min_uniformity_charges, max_uniformity_charges, hatch = "+",color = 'r', alpha = .2, label = "Deviation error")
+    ax.set_xlabel(r"Position (μm)")
     ax.set_ylabel("Number of carriers")
+    plt.legend(fontsize=18)
     plt.savefig("plots/depth_scan_envelope.png")
     plt.clf()
     

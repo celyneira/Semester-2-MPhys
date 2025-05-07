@@ -26,7 +26,8 @@ from matplotlib import rcParams
 import pickle
 
 import progressbar
-
+import mplhep
+mplhep.style.use("LHCb2")
 rcParams['font.family'] = 'DejaVu Serif'
 
 R_LIMIT = 25*10**(-6)
@@ -344,7 +345,7 @@ def comparing_experiment(charge_files, thickness = Z_LIMIT, include_errors = Tru
     plt.show()
 
 
-def curve_fitting(position, range_pickle = "l_range_pickle.pickle", refit = True):
+def curve_fitting(position, range_pickle = "pickle_files/l_range_pickle.pickle", refit = True):
     if __name__ == "__main__":
         beta_data = np.genfromtxt(
             "beta_vals.txt", 
@@ -481,7 +482,7 @@ def confidence_plot(position, max_l, min_l, median_l,range_pickle = "pickle_file
             abs_lower_depth_scan_results[i] = charge_density_normalisation_with_reflection_and_smearing(positions[i], min(beta_2_values), energy, median_l)
             abs_upper_depth_scan_results[i] = charge_density_normalisation_with_reflection_and_smearing(positions[i], max(beta_2_values), energy, median_l)
 
-        results_pickle = pickle.dump([upper_beta, lower_beta, median_beta, upper_beta_err, lower_beta_err, median_beta_err, lower_depth_scan_results, upper_depth_scan_results, median_depth_scan_results, abs_lower_depth_scan_results, abs_upper_depth_scan_results], bound_pickle)
+        pickle.dump([upper_beta, lower_beta, median_beta, upper_beta_err, lower_beta_err, median_beta_err, lower_depth_scan_results, upper_depth_scan_results, median_depth_scan_results, abs_lower_depth_scan_results, abs_upper_depth_scan_results], results_pickle)
 
     else:
         results_pickle = open(bound_pickle, "rb")
@@ -490,8 +491,9 @@ def confidence_plot(position, max_l, min_l, median_l,range_pickle = "pickle_file
         
     positions = positions.flatten()
     plt.clf()
+
     fig, ax = plt.subplots()
-    ax.plot(positions*10**6,, median_depth_scan_results)
+    ax.plot(positions*10**6, median_depth_scan_results)
     
     ax.fill_between(positions*10**6, abs_lower_depth_scan_results, abs_upper_depth_scan_results, color = 'grey', alpha = .2)
     ax.fill_between(positions*10**6, lower_depth_scan_results, upper_depth_scan_results, color = 'b', alpha = .2)
@@ -500,24 +502,37 @@ def confidence_plot(position, max_l, min_l, median_l,range_pickle = "pickle_file
     ax.set_ylabel("Number of carriers")
     plt.savefig("plots/depth_scan_lambda_confidence_levels.png")
     plt.clf()
+  
 
     y_min = min(beta_2_values - beta_2_errors)
     y_max = max(beta_2_values + beta_2_errors)
     y_range = np.linspace(y_min, y_max, 100)
     fig, ax = plt.subplots()
-    ax.errorbar(l_array, beta_2_values, yerr=beta_2_errors, markersize=5, fmt = 'o', color = 'b')
-    ax.fill_betweenx(y_range, x1=(720-5.4432)*10**(-9), x2=(720+5.4432)*10**(-9), alpha = 0.2, color = 'b')
-    ax.axhline(y=(upper_beta+upper_beta_err), color = 'black', linestyle='dashdot')
-    ax.axhline(y=(lower_beta-lower_beta_err), color = 'black', linestyle='dashdot')
-    ax.set_ylabel(r"Beta2")
-    ax.set_xlabel(r"Wavelength")
-    ax.legend(fontsize=20)
+    ax.errorbar(l_array*1e9, beta_2_values, yerr=beta_2_errors, markersize=5, fmt = 'o', color = 'b', label = 'Wavelength samples')
+    ax.fill_betweenx(y_range, x1=(720-5.4432), x2=(720+5.4432), alpha = 0.2, color = 'r')
+    
+    
+    ax.axhline(y=(upper_beta+upper_beta_err), color = 'r', linestyle='dashdot', alpha = 0.5)
+    ax.axhline(y=(lower_beta-lower_beta_err), color = 'r', linestyle='dashdot', alpha = 0.5)
+    
+    
+    ax.errorbar(720-5.4432, lower_beta, yerr= lower_beta_err, color = 'red', fmt = 'o', markersize=5, label = 'Accepted range')
+    ax.errorbar(720+5.4432, upper_beta, yerr= upper_beta_err, color = 'red', fmt = 'o', markersize=5)
+
+    ax.set_ylabel(r"Beta (m/W)")
+    ax.set_xlabel(r"Wavelength (nm)")
+
+    legend=plt.legend(loc= 'lower right', fontsize = 20,frameon=True)
+    legend.get_frame().set_facecolor('white')  # Set solid white background
+    legend.get_frame().set_edgecolor('black')
+
     plt.savefig("plots/shaded_lambda.png")
     plt.clf()
+    print(upper_beta+upper_beta_err, lower_beta-lower_beta_err, upper_beta_err)
 
 def main():
     if __name__ == "__main__":
-        curve_fitting("x3y3")
-        confidence_plot("x3y3", (720+5.4432)*10**(-9), (720-5.4432)*10**(-9), (720)*10**(-9))
+        #curve_fitting("x3y3")
+        confidence_plot("x3y3", (720+5.4432)*10**(-9), (720-5.4432)*10**(-9), (720)*10**(-9), recalculate=False)
 
 main()
